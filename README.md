@@ -19,7 +19,7 @@ php ccPicasaUploader.php
 	--folder=uploadFolder
 
 * If ccPicasaUploaderConfig.json is found in the same directory as the script,
-  it will be read and its innformation extracted.  I place my user email and
+  it will be read and its information extracted.  I place my user email and
   password in it.
 
 
