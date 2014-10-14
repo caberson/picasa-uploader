@@ -24,10 +24,10 @@ Before Use
   folder.  One can get this missing folder from the Zend Framework 1.12.9
   Minimal install.
 * (As of 10/13/2014) The PHP JPEG metadata toolkit is a fairly old library.
-  When I tested this script, I had to make a change to the following two files
-  in the downloaded library:
+  I had to make a change to the following two files in the library:
   - Photoshop_IRB.php
   - EXIF.php
+
   The thing I did was to delete the opening PHP script opening tag '<?PHP',
   retype it in and save the file.
 
