@@ -604,17 +604,42 @@ class PicasaUploader
 } // End class.
 
 
+/**
+ * Read script config file if present.
+ *
+ * @return Array
+ */
 function read_config_file()
 {
 	// See if we can find the config file.  If file exists, extract info.
 	$configFile = dirname(__FILE__) . DIRECTORY_SEPARATOR .
 		UPLOADER_CONFIG_FILE;
 	if (!file_exists($configFile)) {
-		return false;
+		return array();
 	}
 
 	$config = file_get_contents($configFile);
 	return json_decode($config, true);
+}
+
+/**
+ * Get cmd line script usage.
+ *
+ * @return string
+ */
+function get_usage()
+{
+	$file = __FILE__;
+	$usage = <<<TEXT
+Usage: $file
+	--album=album-name
+	--folder=photo-folder
+	--user=Google-Picasa-account-email (can be specified in config.)
+	--password=Google-Picasa-account-password (can be specified in config.)
+
+TEXT;
+	return $usage;
+
 }
 
 ////////////////////////////////////////////////////////////////
@@ -631,9 +656,9 @@ if (isset($argv[0]) && realpath($argv[0]) === realpath(__FILE__)) {
 	extract($args);
 
 	$config = read_config_file();
-	if ((!isset($user) || !isset($password)) && $config) {
-		$user = $config['user'];
-		$password = $config['password'];
+	if ((!isset($user) || !isset($password)) && !empty($config)) {
+		$user = isset($config['user']) ? $config['user'] : null;
+		$password = isset($config['password']) ? $config['password'] : null;
 	}
 
 	if (
@@ -642,8 +667,7 @@ if (isset($argv[0]) && realpath($argv[0]) === realpath(__FILE__)) {
 		!isset($album) ||
 		!isset($folder)
 	) {
-		echo 'Usage: ' . __FILE__ . ' album="albumName" folder=photoFolder'."\n";
-
+		print get_usage();
 		exit(128);
 	}
 
