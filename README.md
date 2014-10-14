@@ -20,6 +20,17 @@ Before Use
 * You may want to create the ccPicasaUploaderConfig.json file and fill it with
   your information.  I place my user email and password in it. Please see the
   template file, ccPicasaUploaderConfig.json.tmpl.
+* (As of 10/13/2014) The ZendGData download was missing the 'library/Zend/Xml'
+  folder.  One can get this missing folder from the Zend Framework 1.12.9
+  Minimal install.
+* (As of 10/13/2014) The PHP JPEG metadata toolkit is a fairly old library.
+  When I tested this script, I had to make a change to the following two files
+  in the downloaded library:
+  - Photoshop_IRB.php
+  - EXIF.php
+  The thing I did was to delete the opening PHP script opening tag '<?PHP',
+  retype it in and save the file.
+
 
 Usage
 ===============
