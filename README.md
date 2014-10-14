@@ -2,12 +2,15 @@ picasa-uploader
 ===============
 Upload photos from your computer to your Picasa account
 
+
 Requirements
 ===============
-* PHP5
-* ZendGdata library (I am using version 1.10)
-* PHP JPEG metadata toolkit (I am using version 1.12)
-* And a picasa account obviously
+* PHP5.
+* ZendGdata library (tested with version 1.10).
+  Source: http://framework.zend.com/downloads/latest
+* PHP JPEG metadata toolkit (tested with version 1.12).
+  Source: http://www.ozhiker.com/electronics/pjmt/
+* And a picasa account obviously.
 
 
 Usage
@@ -26,4 +29,3 @@ php ccPicasaUploader.php
 References
 ===============
 * http://code.google.com/apis/picasaweb/docs/1.0/developers_guide_php.html
-* http://ozhiker.com/electronics/pjmt/
