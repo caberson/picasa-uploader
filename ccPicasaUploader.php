@@ -108,6 +108,7 @@ class PicasaUploader
 		// See if album exists
 		$albumId = static::getAlbumId($gp, $albumName);
 		if (!$albumId) {
+			static::listAllAlbums($gp);
 			$albumId = $this->confirmWithUserOnCreatingAlbum();
 			if (!$albumId) {
 				echo "Album not created.  Exit!\n";
@@ -304,21 +305,37 @@ class PicasaUploader
 			$gAlbumId = $userEntry->gPhotoId->text;
 
 			if (stristr($gAlbumName, $search)) {
-				echo str_repeat("=", 50)."\n";
 				return $gAlbumId;
-
-				break;
-			} else {
-				$output[] = $gAlbumName . ' (' . $gAlbumId . ")";
 			}
 		}
 
-		// List albums if there's no match
+		return false;
+	}
+
+	/**
+	 * List all albums for a Google Picasa account.
+	 *
+	 * @param stdObj $gp	Google Picasa service account object.
+	 */
+	public static function listAllAlbums($gp)
+	{
+		$userFeed = static::getGAlbums($gp);
+
+		$output = array();
+		foreach ($userFeed as $i => $userEntry) {
+			$output[] = $userEntry->title->text .
+				' (' . $userEntry->gPhotoId->text . ')';
+		}
+
+		// List albums if any.
+		if (!count($output)) {
+			return;
+		}
+		
 		echo str_repeat('=', 50)."\n";
 		echo "Existing Albums\n";
 		echo implode("\n", $output);
-
-		return false;
+		echo "\n";
 	}
 
 	/**
@@ -332,12 +349,6 @@ class PicasaUploader
 	{
 		try {
 			$userFeed = $gp->getUserFeed('default');
-			/*
-			foreach ($userFeed as $userEntry) {
-				echo $userEntry->title->text . "\n";
-			}
-			*/
-
 			return $userFeed;
 		} catch (Zend_Gdata_App_HttpException $e) {
 			echo $e->getMessage() . "\n";
@@ -350,8 +361,10 @@ class PicasaUploader
 			// this data unless doing debugging
 			// echo "Request: <br />\n" . $e->getRequest() . "<br />\n";
 		} catch (Zend_Gdata_App_Exception $e) {
-			echo "Error: " . $e->getMessage() . "<br />\n";
+			echo "Error: " . $e->getMessage() . "\n";
 		}
+
+		return array();
 	}
 
 	/**
