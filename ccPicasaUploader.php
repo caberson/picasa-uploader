@@ -6,18 +6,18 @@
 #  Version:         0.1
 =============================================================================*/
 
-define('UPLOADER_CONFIG_FILE', 'ccPicasaUploaderConfig.json');
-define('DEFAULT_USER_TIMEZONE', 'America/New_York');
-define('DIR_LIB', 'lib');
-define('ZEND_GDATA_DIR', DIR_LIB . DIRECTORY_SEPARATOR . 'ZendGdata' .
+define('CC_UPLOADER_CONFIG_FILE', 'ccPicasaUploaderConfig.json');
+define('CC_DEFAULT_USER_TIMEZONE', 'America/New_York');
+define('CC_DIR_LIB', 'lib');
+define('CC_ZEND_GDATA_DIR', CC_DIR_LIB . DIRECTORY_SEPARATOR . 'ZendGdata' .
 	DIRECTORY_SEPARATOR . 'library');
-define('PHP_JPEG_METADATA_TOOLKIT_DIR', DIR_LIB . DIRECTORY_SEPARATOR .
+define('CC_PHP_JPEG_METADATA_TOOLKIT_DIR', CC_DIR_LIB . DIRECTORY_SEPARATOR .
 	'PHP_JPEG_Metadata_Toolkit');
 
 set_include_path(
 	get_include_path() . PATH_SEPARATOR .
-	ZEND_GDATA_DIR . PATH_SEPARATOR .
-	PHP_JPEG_METADATA_TOOLKIT_DIR
+	CC_ZEND_GDATA_DIR . PATH_SEPARATOR .
+	CC_PHP_JPEG_METADATA_TOOLKIT_DIR
 );
 
 require_once 'Zend/Loader.php';
@@ -626,7 +626,7 @@ function read_config_file()
 {
 	// See if we can find the config file.  If file exists, extract info.
 	$configFile = dirname(__FILE__) . DIRECTORY_SEPARATOR .
-		UPLOADER_CONFIG_FILE;
+		CC_UPLOADER_CONFIG_FILE;
 	if (!file_exists($configFile)) {
 		return array();
 	}
@@ -685,7 +685,8 @@ if (isset($argv[0]) && realpath($argv[0]) === realpath(__FILE__)) {
 	}
 
 	date_default_timezone_set(
-		isset($config['timezone']) ? $config['timezone'] : DEFAULT_USER_TIMEZONE
+		isset($config['timezone']) ?
+		$config['timezone'] : CC_DEFAULT_USER_TIMEZONE
 	);
 
 	$uploader = new PicasaUploader();
