@@ -17,12 +17,11 @@ set_include_path(
 	ZEND_GDATA_DIR . PATH_SEPARATOR .
 	PHP_JPEG_METADATA_TOOLKIT_DIR
 );
-// echo ini_get('include_path');
 
 require_once 'Zend/Loader.php';
 require_once 'Zend/Gdata.php';
 
-// Loading Zend classes
+// Loading other required Zend classes.
 $requiredClasses = array(
 	'Zend_Gdata',
 	'Zend_Gdata_AuthSub',
@@ -34,11 +33,10 @@ $requiredClasses = array(
 	'Zend_Gdata_App_Extension_Category',
 );
 foreach ($requiredClasses as $className) {
-	// echo $className . "\n";
 	Zend_Loader::loadClass($className);
 }
 
-// Incude JPEG metadata toolkit
+// Incude JPEG metadata toolkit.
 require_once 'Toolkit_Version.php';
 require_once 'JPEG.php';
 require_once 'XMP.php';
@@ -47,31 +45,32 @@ require_once 'EXIF.php';
 require_once 'JFIF.php';
 require_once 'PictureInfo.php';
 
-
+/**
+ * Class to upload local photos to Google Picasa.
+ */
 class PicasaUploader
 {
-	// Google picasa service
+	// Google picasa service.
 	protected $gp;
 
 	protected $user;
 	protected $password;
 
-	// User provided album id/name
+	// User provided album id/name.
 	protected $albumName;
 	protected $uploadFolder;
 
-	// Google album id
+	// Google album id.
 	protected $aid;
 
 	protected $moveToFolderWhenDone = '';
 
 	public function __construct()
 	{
-
 	}
 
 	/**
-	 * Log in to google service using provided user name and password
+	 * Log in to google service using provided user name and password.
 	 *
 	 * @param string $user	user id
 	 * @param string $password	password
@@ -90,10 +89,10 @@ class PicasaUploader
 	}
 
 	/**
-	 * Upload a folder to picasa
+	 * Upload a folder to picasa.
 	 *
-	 * @param  string $albumName	album name
-	 * @param  string $uploadFolder		upload folder
+	 * @param string $albumName		album name
+	 * @param string $uploadFolder	upload folder
 	 *
 	 * @return boolean
 	 */
@@ -114,7 +113,6 @@ class PicasaUploader
 			}
 		}
 		$this->aid = $albumId;
-
 
 		$baseFolderName = basename($uploadFolder);
 		echo "Album: " . $albumName . "\n";
@@ -137,6 +135,11 @@ class PicasaUploader
 		return true;
 	}
 
+	/**
+	 * Confirm with client user on album creation.
+	 *
+	 * @return integer|boolean
+	 */
 	public function confirmWithUserOnCreatingAlbum()
 	{
 		$albumName = $this->getAlbumName();
@@ -150,13 +153,11 @@ class PicasaUploader
 
 		$baseFolderName = basename($this->getUploadFolder());
 
-
 		$albumTitle = $albumName;
-		// ucwords(str_ireplace('_', ' ', substr($dirna, 9)));
 		$albumTime = static::getAlbumTSFromDirNa($baseFolderName);
 		$albumSummary = '';
 
-		// add album
+		// Add album.
 		$aid = static::addAlbum($this->gp, $albumTitle, $albumTime, $albumSummary);
 		if ($aid) {
 			return $aid;
@@ -166,10 +167,18 @@ class PicasaUploader
 		}
 	}
 
+	/**
+	 * Uploads images from a folder.
+	 *
+	 * @param stdObj $gp	Google Picasa service object.
+	 * @param string $albumId	Album id string.
+	 * @param string $uploadFolder	Source upload folder path string.
+	 * @param string $moveToFolderWhenDone	(Optional) Move uploaded photo to
+	 * 										this directory if specified.
+	 */
 	public static function uploadPhotoFromFolder(
 		$gp, $albumId, $uploadFolder, $moveToFolderWhenDone = ''
-	)
-	{
+	) {
 		$baseFolderName = basename($uploadFolder);
 		$albumTSFromDir = static::getAlbumTSFromDirNa($baseFolderName);
 
@@ -178,10 +187,10 @@ class PicasaUploader
 		$dirit = new DirectoryIterator($uploadFolder);
 		$i = 0;
 		foreach ($dirit as $fileInfo) {
+			// Ignore dot files, directories and hidden files.
 			if (
 				$fileInfo->isDot() ||
 				$fileInfo->isDir() ||
-				// Ignore hidden file
 				substr($fileInfo->getFilename(), 0, 1) == '.'
 			) {
 				continue;
@@ -189,7 +198,7 @@ class PicasaUploader
 
 			$fileNa = $fileInfo->getFilename();
 			$filePath = $fileInfo->getPathname();
-			// validate file is image
+			// Validate file is image.
 			if (!exif_imagetype($filePath)) {
 				echo "Non image file skipped: $fileNa\n";
 				continue;
@@ -224,20 +233,40 @@ class PicasaUploader
 		} // end for
 	}
 
+	/**
+	 * Get album id by album name.
+	 *
+	 * @param stdObj $gp	Google Picasa service object.
+	 * @param string $album		Album id or name.  If $album is all digits,
+	 * 							verify that the album id is valid.  Otherwise,
+	 * 							search for an album with the given album name.
+	 *
+	 * @return integer|boolean
+	 */
 	public static function getAlbumId($gp, $album)
 	{
+		// If $album is all digits, check if it's a valid one.
 		if (ctype_digit("$album") && static::gAlbumExists($gp, $album)) {
 			return $album;
-		} else {
-			$aid = static::getGAlbumByName($gp, $album);
-			if ($aid) {
-				return $aid;
-			}
+		}
+
+		// Attempt to search album with the given album name.
+		$aid = static::getGAlbumByName($gp, $album);
+		if ($aid) {
+			return $aid;
 		}
 
 		return false;
 	}
 
+	/**
+	 * Check album id exists.
+	 *
+	 * @param stdObj $gp	Google Picasa service object.
+	 * @param string $albumId	Album id.
+	 *
+	 * @return stdObj|boolean
+	 */
 	public static function gAlbumExists($gp, $albumId)
 	{
 		$gAlbumQuery = new Zend_Gdata_Photos_AlbumQuery();
@@ -255,6 +284,14 @@ class PicasaUploader
 		}
 	}
 
+	/**
+	 * Get album id by name.
+	 *
+	 * @param stdObj $gp	Google Picasa service object.
+	 * @param string $search	Album name to search for.
+	 *
+	 * @return integer|boolean
+	 */
 	public static function getGAlbumByName($gp, $search)
 	{
 		$userFeed = static::getGAlbums($gp);
@@ -275,23 +312,31 @@ class PicasaUploader
 		}
 
 		// List albums if there's no match
-		echo str_repeat("=", 50)."\n";
+		echo str_repeat('=', 50)."\n";
 		echo "Existing Albums\n";
 		echo implode("\n", $output);
 
 		return false;
 	}
 
+	/**
+	 * Get list of albums.
+	 *
+	 * @param stdObj $gp	Google Picasa service object.
+	 *
+	 * @return stdObj
+	 */
 	public static function getGAlbums($gp)
 	{
 		try {
 			$userFeed = $gp->getUserFeed('default');
-
-			return $userFeed;
-
+			/*
 			foreach ($userFeed as $userEntry) {
 				echo $userEntry->title->text . "\n";
 			}
+			*/
+
+			return $userFeed;
 		} catch (Zend_Gdata_App_HttpException $e) {
 			echo $e->getMessage() . "\n";
 			if ($e->getResponse() != null) {
@@ -310,18 +355,17 @@ class PicasaUploader
 	/**
 	 * Create picasa album
 	 *
-	 * @param stdObj $gp google picasa service
-	 * @param string $albumTitle album title
-	 * @param integer $albumTime album timestamp
-	 * @param string $albumSummary album summary
-	 * @param boolean $public public album or not
+	 * @param stdObj $gp	Google picasa service.
+	 * @param string $albumTitle	Album title.
+	 * @param integer $albumTime	Album timestamp.
+	 * @param string $albumSummary	Album summary.
+	 * @param boolean $public	Public album or not.
 	 *
-	 * @return integer album id
+	 * @return integer
 	 */
 	public static function addAlbum(
 		$gp, $albumTitle, $albumTime = 0, $albumSummary = '', $public = false
-	)
-	{
+	) {
 		$entry = new Zend_Gdata_Photos_AlbumEntry();
 		if ($public) {
 			$entry->setGphotoAccess($gp->newAccess('public'));
@@ -337,45 +381,54 @@ class PicasaUploader
 		return $gPhotoId;
 	}
 
+	/**
+ 	 * Add photo to album.
+	 *
+	 * @param stdObj $gp	Google Picasa service object.
+	 * @param string $albumId	Album id.
+	 * @param string $fileNa	Image file path to add to the album file.
+	 * @param string $fileTimestamp		Timestamp to use for the file.
+	 *
+	 * @return stdObj
+	 */
 	public static function addPhoto(
 		$gp, $albumId = 'default', $fileNa = '', $fileTimestamp = ''
-	)
-	{
+	) {
 		$username = 'default';
 
 		$photoName = basename($fileNa);
 		$photoTimestamp = $fileTimestamp;
 		$photoCaption = '';
 
-		//keywords
-		$photoTags = static::getKeywordsFromFile($fileNa);
+		// Keywords.
+		$photoTags = implode(',', static::getKeywordsFromFile($fileNa));
 
-		// Set image mime type
+		// Set image mime type.
 		$fd = $gp->newMediaFileSource($fileNa);
 		$imgMimeType = image_type_to_mime_type(exif_imagetype($fileNa));
 		$fd->setContentType($imgMimeType);
 
-		// Create a PhotoEntry
+		// Create a PhotoEntry.
 		$photoEntry = $gp->newPhotoEntry();
 		$photoEntry->setMediaSource($fd);
 		$photoEntry->setTitle($gp->newTitle($photoName));
 		$photoEntry->setSummary($gp->newSummary($photoCaption));
 		$photoEntry->setGphotoTimestamp($gp->newTimestamp($photoTimestamp));
 
-		// add some tags
+		// Add some tags.
 		$keywords = new Zend_Gdata_Media_Extension_MediaKeywords();
 		$keywords->setText($photoTags);
 		$photoEntry->mediaGroup = new Zend_Gdata_Media_Extension_MediaGroup();
 		$photoEntry->mediaGroup->keywords = $keywords;
 
-		// We use the AlbumQuery class to generate the URL for the album
+		// We use the AlbumQuery class to generate the URL for the album.
 		$albumQuery = $gp->newAlbumQuery();
 
 		$albumQuery->setUser($username);
 		$albumQuery->setAlbumId($albumId);
 
 		// We insert the photo, and the server returns the entry representing
-		// that photo after it is uploaded
+		// that photo after it is uploaded.
 		$insertedEntry = $gp->insertPhotoEntry(
 			$photoEntry, $albumQuery->getQueryUrl()
 		);
@@ -387,34 +440,46 @@ class PicasaUploader
 	 * Utility methods
 	 */
 
-	public static function getAlbumTSFromDirNa($dirNa) {
+	/**
+	 * Get default albums timestamp from directory name.
+	 *
+	 * @param string $dirNa		Directory name.
+	 *
+	 * @return integer
+	 */
+	public static function getAlbumTSFromDirNa($dirNa)
+	{
 		$dtFormatStr = '%Y%m%d';
 		$dtFormat = 'Ymd';
 		$dtz = new DateTimeZone(date_default_timezone_get());
 
 		$dirInfo = explode('_', $dirNa);
-		//$aTime = strtotime($dirInfo[0], $dtz);// * 1000;
-		// $aTime = strptime($dirInfo[0], $dtFormat);
 
 		$dt = DateTime::createFromFormat($dtFormat, $dirInfo[0], $dtz);
 		if (!$dt) {
 			return false;
 		}
-		$dt->add(new DateInterval('PT3H'));	//P1D  PT3H
-		//echo $dt->format($dtFormat);
+
+		$dt->add(new DateInterval('PT3H'));
 		$aTime = $dt->getTimestamp() * 1000;
 
 		return $aTime;
 	}
 
-	function getAlbumTSFromFileNa($fileNa) {
+	/**
+	 * Get timestamp from file's name.
+	 * 
+	 * @parm string $fileNa		File name.
+	 *
+	 * @return integer
+	 */
+	public static function getAlbumTSFromFileNa($fileNa)
+	{
 		$dtFormatStr = "%Y%m%d";
 		$dtFormat = 'Ymd';
 		$dtz = new DateTimeZone(date_default_timezone_get());
 
 		$fileInfo = explode('_', $fileNa);
-		// $aTime = strtotime($dirInfo[0], $dtz);// * 1000;
-		// $aTime = strptime($dirInfo[0], $dtFormat);
 
 		// check there's a date to parse in file name
 		$fileDate = $fileInfo[0];
@@ -422,15 +487,20 @@ class PicasaUploader
 			return false;
 		}
 
-
 		$dt = DateTime::createFromFormat($dtFormat, $fileDate, $dtz);
 		$dt->add(new DateInterval('PT0H'));	//P1D PT4H
-		//echo $dt->format($dtFormat);
 		$aTime = $dt->getTimestamp() * 1000;
 
 		return $aTime;
 	}
 
+	/**
+	 * Get photo date from file's image path.
+	 *
+	 * @param string @imgPath	Image path.
+	 *
+	 * @return integer
+	 */
 	public static function getPhotoDateFromFile($imgPath)
 	{
 		$exif = exif_read_data($imgPath, 0, true);
@@ -451,20 +521,18 @@ class PicasaUploader
 		if (!$dt) {
 			return false;
 		}
-		//$dt->add(new DateInterval('PT0H'));	//P1D PT4H
 		$aTime = $dt->getTimestamp() * 1000;
 
 		return $aTime;
-
-		/*
-		foreach ($exif as $key => $section) {
-		    foreach ($section as $name => $val) {
-		        echo "$key.$name: $val<br />\n";
-		    }
-		}
-		*/
 	}
 
+	/**
+	 * Get keywords from a file's metadata.
+	 *
+	 * @param string @imgPath	Image path.
+	 *
+	 * @return Array
+	 */
 	public static function getKeywordsFromFile($imgPath)
 	{
 		$aryOutput = Array();
@@ -475,30 +543,27 @@ class PicasaUploader
 			return $aryOutput;
 		}
 
-		/* init xml obj */
+		// Init xml obj.
 		$xmlDoc = new DOMDocument();
 		$xmlDoc->preserveWhiteSpace = true;
 		$xmlDoc->loadXML($strXMP);
 
-
-		/* Init xPath */
+		// Init xPath.
 		$objXPath = new DOMXPath($xmlDoc);
-		$objXPath->registerNamespace('dc', 'http://purl.org/dc/elements/1.1/');
-		$objXPath->registerNamespace('rdf', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#');
+		$objXPath->registerNamespace(
+			'dc', 'http://purl.org/dc/elements/1.1/'
+		);
+		$objXPath->registerNamespace(
+			'rdf', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'
+		);
 
 		$strXPathQuery = '//dc:subject//rdf:li';
 		$objEntries = $objXPath->query($strXPathQuery);
-
 		foreach ($objEntries as $entry) {
 			$aryOutput[] = $entry->nodeValue;
 		}
 
-		// convert to string
-		$tag = '';
-		foreach ($aryOutput as $kw) {
-			$tag .= $kw.',';
-		}
-		return $tag;
+		return $aryOutput;
 	}
 
 	/**
@@ -534,7 +599,7 @@ class PicasaUploader
 	{
 		return $this->uploadFolder;
 	}
-}
+} // End class.
 
 
 
@@ -552,8 +617,9 @@ if (isset($argv[0]) && realpath($argv[0]) === realpath(__FILE__)) {
 	extract($args);
 
 	if (!isset($user) || !isset($password)) {
-		// See if we can find the config file.  If exists, extract info.
-		$configFile = dirname(__FILE__) . DIRECTORY_SEPARATOR . UPLOADER_CONFIG_FILE;
+		// See if we can find the config file.  If file exists, extract info.
+		$configFile = dirname(__FILE__) . DIRECTORY_SEPARATOR .
+			UPLOADER_CONFIG_FILE;
 		if (file_exists($configFile)) {
 			$config = file_get_contents($configFile);
 			$config = json_decode($config, true);
