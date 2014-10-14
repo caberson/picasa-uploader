@@ -8,8 +8,11 @@
 
 define('UPLOADER_CONFIG_FILE', 'ccPicasaUploaderConfig.json');
 define('DEFAULT_USER_TIMEZONE', 'America/New_York');
-define('ZEND_GDATA_DIR', 'ZendGdata/library');
-define('PHP_JPEG_METADATA_TOOLKIT_DIR', 'PHP_JPEG_Metadata_Toolkit');
+define('DIR_LIB', 'lib');
+define('ZEND_GDATA_DIR', DIR_LIB . DIRECTORY_SEPARATOR . 'ZendGdata' .
+	DIRECTORY_SEPARATOR . 'library');
+define('PHP_JPEG_METADATA_TOOLKIT_DIR', DIR_LIB . DIRECTORY_SEPARATOR .
+	'PHP_JPEG_Metadata_Toolkit');
 
 set_include_path(
 	get_include_path() . PATH_SEPARATOR .
