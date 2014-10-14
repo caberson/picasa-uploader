@@ -6,11 +6,10 @@
 #  Version:         0.1
 =============================================================================*/
 
+define('UPLOADER_CONFIG_FILE', 'ccPicasaUploaderConfig.json');
+define('DEFAULT_USER_TIMEZONE', 'America/New_York');
 define('ZEND_GDATA_DIR', 'ZendGdata/library');
 define('PHP_JPEG_METADATA_TOOLKIT_DIR', 'PHP_JPEG_Metadata_Toolkit');
-define('UPLOADER_CONFIG_FILE', 'ccPicasaUploaderConfig.json');
-
-define('USER_TIMEZONE', 'America/New_York');
 
 set_include_path(
 	get_include_path() . PATH_SEPARATOR .
@@ -602,6 +601,18 @@ class PicasaUploader
 } // End class.
 
 
+function read_config_file()
+{
+	// See if we can find the config file.  If file exists, extract info.
+	$configFile = dirname(__FILE__) . DIRECTORY_SEPARATOR .
+		UPLOADER_CONFIG_FILE;
+	if (!file_exists($configFile)) {
+		return false;
+	}
+
+	$config = file_get_contents($configFile);
+	return json_decode($config, true);
+}
 
 ////////////////////////////////////////////////////////////////
 // Main code if run from command line
@@ -616,15 +627,10 @@ if (isset($argv[0]) && realpath($argv[0]) === realpath(__FILE__)) {
 	$args = getopt(false, $longOpts);
 	extract($args);
 
-	if (!isset($user) || !isset($password)) {
-		// See if we can find the config file.  If file exists, extract info.
-		$configFile = dirname(__FILE__) . DIRECTORY_SEPARATOR .
-			UPLOADER_CONFIG_FILE;
-		if (file_exists($configFile)) {
-			$config = file_get_contents($configFile);
-			$config = json_decode($config, true);
-			extract($config);
-		}
+	$config = read_config_file();
+	if ((!isset($user) || !isset($password)) && $config) {
+		$user = $config['user'];
+		$password = $config['password'];
 	}
 
 	if (
@@ -638,7 +644,9 @@ if (isset($argv[0]) && realpath($argv[0]) === realpath(__FILE__)) {
 		exit(128);
 	}
 
-	date_default_timezone_set(USER_TIMEZONE);
+	date_default_timezone_set(
+		isset($config['timezone']) ? $config['timezone'] : DEFAULT_USER_TIMEZONE
+	);
 
 	$uploader = new PicasaUploader();
 	$uploader->login($user, $password);
