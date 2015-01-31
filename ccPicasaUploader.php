@@ -338,6 +338,26 @@ class PicasaUploader
 		echo "\n";
 	}
 
+	public static function viewAlbum($gp, $album)
+	{
+		$userFeed = static::getGAlbums($gp);
+
+		foreach ($userFeed as $i => $userEntry) {
+			// Match album name or id.
+			if (
+				$userEntry->gPhotoId->text != $album && 
+				$userEntry->title->text != $album
+			) {
+				continue;
+			}
+
+			echo $userEntry->title->text;
+			var_dump($userEntry);
+		}
+
+		echo "\n";
+	}
+
 	/**
 	 * Get list of albums.
 	 *
@@ -585,6 +605,11 @@ class PicasaUploader
 	 * Getters/setters
 	 */
 
+	public function getGP()
+	{
+		return $this->gp;
+	}
+
 	public function setUser($user)
 	{
 		$this->user = $user;
@@ -647,6 +672,8 @@ function get_usage()
 Usage: $file
 	--album=album-name
 	--folder=photo-folder
+	--list
+	--view
 	--user=Google-Picasa-account-email (can be specified in config.)
 	--password=Google-Picasa-account-password (can be specified in config.)
 
@@ -664,6 +691,8 @@ if (isset($argv[0]) && realpath($argv[0]) === realpath(__FILE__)) {
 		'password::',
 		'album::',
 		'folder::',
+		'list::',
+		'view::',
 	);
 	$args = getopt(false, $longOpts);
 	extract($args);
@@ -674,23 +703,34 @@ if (isset($argv[0]) && realpath($argv[0]) === realpath(__FILE__)) {
 		$password = isset($config['password']) ? $config['password'] : null;
 	}
 
-	if (
-		!isset($user) ||
-		!isset($password) ||
-		!isset($album) ||
-		!isset($folder)
-	) {
+	if (!isset($user) || !isset($password)) {
 		print get_usage();
 		exit(128);
 	}
 
 	date_default_timezone_set(
 		isset($config['timezone']) ?
-		$config['timezone'] : CC_DEFAULT_USER_TIMEZONE
+			$config['timezone'] : CC_DEFAULT_USER_TIMEZONE
 	);
 
 	$uploader = new PicasaUploader();
 	$uploader->login($user, $password);
+
+	if (isset($list)) {
+		PicasaUploader::listAllAlbums($uploader->getGP());
+		return;
+	}
+
+	if (isset($view)) {
+		echo "$view\n";
+		PicasaUploader::viewAlbum($uploader->getGP(), $view);
+		return;
+	}
+
+	if (!isset($album) || !isset($folder)) {
+		print get_usage();
+		exit(128);
+	}
 	$uploader->uploadTo($album, $folder);
 }
 
