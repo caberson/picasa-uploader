@@ -209,9 +209,7 @@ class PicasaUploader
 
 			// Get photo timestamp from EXIF.  If not present, get timestamp
 			// from file name.  If not present, use folder timestamp
-			$fileTS = static::getPhotoDateFromFile($filePath) ?
-				static::getPhotoDateFromFile($filePath) : $albumTSFromDir;
-
+			$fileTS = static::getPhotoDateFromFile($filePath);
 			if (!$fileTS) {
 				// Get TS from file name.
 				$fileTS = static::getAlbumTSFromFileNa($fileNa);
@@ -227,9 +225,7 @@ class PicasaUploader
 				$fileTS += $i;
 			}
 
-
-			echo "File: $fileNa ($fileTS " . date('Ymd', $fileTS) . ")\n";
-			// return;
+			echo "File: $fileNa ($fileTS " . date('Ymd H:i:s', ($fileTS / 1000)) . ")\n";
 
 			// Upload photo
 			static::addPhoto($gp, $albumId, $filePath, $fileTS);
@@ -517,7 +513,7 @@ class PicasaUploader
 		}
 
 		$dt->setTime(0, 0, 0);
-		//$dt->add(new DateInterval('PT3H'));
+		$dt->add(new DateInterval('PT3H'));
 		$aTime = $dt->getTimestamp() * 1000;
 
 		return $aTime;
