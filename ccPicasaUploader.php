@@ -211,17 +211,25 @@ class PicasaUploader
 			// from file name.  If not present, use folder timestamp
 			$fileTS = static::getPhotoDateFromFile($filePath) ?
 				static::getPhotoDateFromFile($filePath) : $albumTSFromDir;
+
 			if (!$fileTS) {
+				// Get TS from file name.
 				$fileTS = static::getAlbumTSFromFileNa($fileNa);
-			}
-			if (!$fileTS && $albumTSFromDir) {
-				$fileTS = $albumTSFromDir;
-			} else {
-				// Use current date.  The + $i orders the photos.
-				$fileTS = $currentDate->getTimestamp() + $i;
+
+				// If filename doesn't have date.
+				if (!$fileTS) {
+					// Use folder date or current date.
+					$fileTS = $albumTSFromDir ?
+						$albumTSFromDir : $currentDate->getTimestamp();
+				}
+
+				// The + $i orders the photos.
+				$fileTS += $i;
 			}
 
-			echo "File: $fileNa ($fileTS " . date('m/d/Y', $fileTS) . ")\n";
+
+			echo "File: $fileNa ($fileTS " . date('Ymd', $fileTS) . ")\n";
+			// return;
 
 			// Upload photo
 			static::addPhoto($gp, $albumId, $filePath, $fileTS);
@@ -537,7 +545,8 @@ class PicasaUploader
 		}
 
 		$dt = DateTime::createFromFormat($dtFormat, $fileDate, $dtz);
-		$dt->add(new DateInterval('PT0H'));	//P1D PT4H
+		$dt->setTime(0, 0, 0);
+		// $dt->add(new DateInterval('PT0H'));	//P1D PT4H
 		$aTime = $dt->getTimestamp() * 1000;
 
 		return $aTime;
