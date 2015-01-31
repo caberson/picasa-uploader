@@ -321,11 +321,21 @@ class PicasaUploader
 	{
 		$userFeed = static::getGAlbums($gp);
 
-		$output = array();
+		$output = [];
+		$timestamps = [];
 		foreach ($userFeed as $i => $userEntry) {
-			$output[] = $userEntry->title->text .
-				' (' . $userEntry->gPhotoId->text . ')';
+			$timestamp = $userEntry->getGphotoTimestamp()->getText() / 1000;
+			$timestamps[] = $timestamp;
+			$output[] = date('Ymd', $timestamp) . ' ' .
+				$userEntry->getTitle()->getText() .
+				' (' . $userEntry->getGphotoId()->getText() . ')';
 		}
+
+		// Sort by album date
+		array_multisort(
+			$timestamps, SORT_ASC,
+			$output
+		);
 
 		// List albums if any.
 		if (!count($output)) {
@@ -343,16 +353,19 @@ class PicasaUploader
 		$userFeed = static::getGAlbums($gp);
 
 		foreach ($userFeed as $i => $userEntry) {
-			// Match album name or id.
+			// Match album title or id.
 			if (
-				$userEntry->gPhotoId->text != $album && 
-				$userEntry->title->text != $album
+				// $userEntry->gPhotoId->text != $album && 
+				// $userEntry->title->text != $album
+				$userEntry->getGphotoId() != $album &&
+				$userEntry->getTitle() != $album
+				// $userEntry->getGphotoName() != $album
 			) {
 				continue;
 			}
 
-			echo $userEntry->title->text;
-			var_dump($userEntry);
+			// echo $userEntry->title->text;
+			echo "ID: " . $userEntry->getGphotoTimestamp();
 		}
 
 		echo "\n";
@@ -495,7 +508,8 @@ class PicasaUploader
 			return false;
 		}
 
-		$dt->add(new DateInterval('PT3H'));
+		$dt->setTime(0, 0, 0);
+		//$dt->add(new DateInterval('PT3H'));
 		$aTime = $dt->getTimestamp() * 1000;
 
 		return $aTime;
@@ -722,7 +736,7 @@ if (isset($argv[0]) && realpath($argv[0]) === realpath(__FILE__)) {
 	}
 
 	if (isset($view)) {
-		echo "$view\n";
+		echo "ViewAlbumId: $view\n";
 		PicasaUploader::viewAlbum($uploader->getGP(), $view);
 		return;
 	}
