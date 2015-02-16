@@ -182,6 +182,7 @@ class PicasaUploader
 	public static function uploadPhotoFromFolder(
 		$gp, $albumId, $uploadFolder, $moveToFolderWhenDone = ''
 	) {
+		$uploadFolder = realpath($uploadFolder);
 		$baseFolderName = basename($uploadFolder);
 		$albumTSFromDir = static::getAlbumTSFromDirNa($baseFolderName);
 
