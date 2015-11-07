@@ -16,12 +16,17 @@ define('CC_PHP_JPEG_METADATA_TOOLKIT_DIR', CC_DIR_LIB . DIRECTORY_SEPARATOR .
 
 set_include_path(
 	get_include_path() . PATH_SEPARATOR .
+	CC_DIR_LIB . PATH_SEPARATOR .
 	CC_ZEND_GDATA_DIR . PATH_SEPARATOR .
 	CC_PHP_JPEG_METADATA_TOOLKIT_DIR
 );
 
 require_once 'Zend/Loader.php';
 require_once 'Zend/Gdata.php';
+require_once 'google-api-php-client/src/Google/autoload.php';
+
+// require_once 'zend_gdata_http_client/Zend_Gdata_HttpClient.php';
+require_once 'zend_gdata_http_client/Zend_Gdata_OAuthClient.php';
 
 // Loading other required Zend classes.
 $requiredClasses = array(
@@ -52,6 +57,10 @@ require_once 'PictureInfo.php';
  */
 class PicasaUploader
 {
+	// const GOOGLE_OAUTH_CREDENTIAL_FILE = 'cc-picasa-uploader-google-client-secret.json';
+	const GOOGLE_OAUTH_CREDENTIAL_FILE = 'cc-picasa-uploader-client-secret.json';
+	const REFRESH_TOKEN_FILE = 'access-token.json';
+
 	// Google picasa service.
 	protected $gp;
 
@@ -71,13 +80,115 @@ class PicasaUploader
 	{
 	}
 
+	private static function getAccessTokenString()
+	{
+		// See if we can find the config file.  If file exists, extract info.
+		$configFile = dirname(__FILE__) . DIRECTORY_SEPARATOR .
+			static::REFRESH_TOKEN_FILE;
+		if (!file_exists($configFile)) {
+			return null;
+		}
+
+		$config = file_get_contents($configFile);
+		return $config;
+	}
+
+	private static function getAccessTokenData()
+	{
+		$config = static::getAccessTokenString();
+		return json_decode($config, true);
+	}
+
+	private static function getRefreshToken()
+	{
+		$config = static::getAccessTokenData();
+		return $config['refresh_token'];
+	}
+
+	private static function getAccessToken()
+	{
+		$config = static::getAccessTokenData();
+		return $config['access_token'];
+	}
+
+
+	public function getOAuthData()
+	{
+		// See if we can find the config file.  If file exists, extract info.
+		$configFile = dirname(__FILE__) . DIRECTORY_SEPARATOR .
+			static::GOOGLE_OAUTH_CREDENTIAL_FILE;
+		if (!file_exists($configFile)) {
+			return array();
+		}
+
+		$config = file_get_contents($configFile);
+		return json_decode($config, true)['installed'];
+	}
+
+	private static function storeAccessToken($accessToken)
+	{
+		if (!$accessToken) {
+			echo "Empty accessTOken";
+			return;
+		}
+
+		file_put_contents(static::REFRESH_TOKEN_FILE, $accessToken);
+	}
+
 	/**
 	 * Log in to google service using provided user name and password.
 	 *
 	 * @param string $user	user id
 	 * @param string $password	password
 	 */
-	public function login($user, $password)
+	public function login($user, $pwd)
+	{
+		$oauthData = $this->getOAuthData();
+		$clientId = $oauthData['client_id'];
+		$clientSecret = $oauthData['client_secret'];
+		$scopes = [Zend_Gdata_Photos::PICASA_BASE_URI];//'https://picasaweb.google.com/data/';
+		$accessTokenData = static::getAccessTokenData();
+
+		$client = new Google_Client();
+		$client->setAuthConfigFile(static::GOOGLE_OAUTH_CREDENTIAL_FILE);
+		$client->addScope($scopes);
+		$client->setIncludeGrantedScopes(true);
+		$client->setAccessType('offline');
+		// $client->setDeveloperKey($apiKey);
+
+		if (empty($accessTokenData)) {
+			$auth_url = $client->createAuthUrl();
+
+			// Open up browser to request access.
+			$cmd = 'open "' . $auth_url . '"';
+			exec($cmd);
+
+			$code = readline("\nEnter code: ");
+			$client->authenticate($code);
+
+			$accessToken = $client->getAccessToken();
+			print "\nAccess code: $accessToken\n";
+			static::storeAccessToken($accessToken);
+		} else {
+			$client->setAccessToken(static::getAccessTokenString());
+			if ($client->isAccessTokenExpired()) {
+				echo 'expired.......' . $this->getRefreshToken();
+				$client->refreshToken($this->getRefreshToken());
+				static::storeAccessToken($client->getAccessToken());
+				var_dump("AT ");
+			} else {
+				/// echo 'not expired...';
+			}
+		}
+
+		$accessToken = json_decode($client->getAccessToken(), true);
+		$refreshToken = $accessToken['refresh_token'];
+
+		$zc = Zend_Gdata_OAuthClient::getHttpClient($clientId, $clientSecret, $refreshToken);
+		$this->gp = new Zend_Gdata_Photos($zc, 'Google-Dev-1.1');
+	}
+
+	public function login_old($user, $password)
 	{
 		$this->setUser($user);
 		$this->setPassword($password);
@@ -86,6 +197,30 @@ class PicasaUploader
 		$client = Zend_Gdata_ClientLogin::getHttpClient(
 			$user, $password, Zend_Gdata_Photos::AUTH_SERVICE_NAME
 		);
+
+		$oauthData = $this->getOAuthData();
+		$clientId = $oauthData['client_id'];
+		$clientSecret = $oauthData['client_secret'];
+
+
+		$client = new Google_Client();
+		$client->setClientId($clientId);
+		$client->setClientSecret($clientSecret);
+		$client->setApplicationName('cc-picasa-uploader');
+		$client->setDeveloperKey("YOUR_APP_KEY");
+
+		$service = new Google_Service_Books($client);
+		$optParams = array('filter' => 'free-ebooks');
+		$results = $service->volumes->listVolumes('Henry David Thoreau', $optParams);
+
+		foreach ($results as $item) {
+		echo $item['volumeInfo']['title'], "<br /> \n";
+		}
+		return;
+
+
+
+
 
 		$this->gp = new Zend_Gdata_Photos($client, 'Google-Dev-1.1');
 	}
@@ -345,7 +480,7 @@ class PicasaUploader
 		if (!count($output)) {
 			return;
 		}
-		
+
 		echo str_repeat('=', 50)."\n";
 		echo "Existing Albums\n";
 		echo implode("\n", $output);
@@ -359,7 +494,7 @@ class PicasaUploader
 		foreach ($userFeed as $i => $userEntry) {
 			// Match album title or id.
 			if (
-				// $userEntry->gPhotoId->text != $album && 
+				// $userEntry->gPhotoId->text != $album &&
 				// $userEntry->title->text != $album
 				$userEntry->getGphotoId() != $album &&
 				$userEntry->getTitle() != $album
@@ -521,7 +656,7 @@ class PicasaUploader
 
 	/**
 	 * Get timestamp from file's name.
-	 * 
+	 *
 	 * @parm string $fileNa		File name.
 	 *
 	 * @return integer
@@ -735,6 +870,11 @@ if (isset($argv[0]) && realpath($argv[0]) === realpath(__FILE__)) {
 	$uploader = new PicasaUploader();
 	$uploader->login($user, $password);
 
+	if (!$uploader->getGP()) {
+		echo "Invalid GP handler.";
+		return;
+	}
+
 	if (isset($list)) {
 		PicasaUploader::listAllAlbums($uploader->getGP());
 		return;
@@ -752,5 +892,4 @@ if (isset($argv[0]) && realpath($argv[0]) === realpath(__FILE__)) {
 	}
 	$uploader->uploadTo($album, $folder);
 }
-
 ?>
