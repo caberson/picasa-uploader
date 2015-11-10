@@ -6,6 +6,10 @@
 #  Version:         0.1
 =============================================================================*/
 
+use ZendGData\Photos;
+
+require_once __DIR__ . '/vendor/autoload.php';
+
 define('CC_UPLOADER_CONFIG_FILE', 'ccPicasaUploaderConfig.json');
 define('CC_DEFAULT_USER_TIMEZONE', 'America/New_York');
 define('CC_DIR_LIB', 'lib');
@@ -21,9 +25,9 @@ set_include_path(
 	CC_PHP_JPEG_METADATA_TOOLKIT_DIR
 );
 
-require_once 'Zend/Loader.php';
-require_once 'Zend/Gdata.php';
-require_once 'google-api-php-client/src/Google/autoload.php';
+//require_once 'Zend/Loader.php';
+// require_once 'Zend/Gdata.php';
+// require_once 'google-api-php-client/src/Google/autoload.php';
 
 // require_once 'zend_gdata_http_client/Zend_Gdata_HttpClient.php';
 require_once 'zend_gdata_http_client/Zend_Gdata_OAuthClient.php';
@@ -40,7 +44,7 @@ $requiredClasses = array(
 	'Zend_Gdata_App_Extension_Category',
 );
 foreach ($requiredClasses as $className) {
-	Zend_Loader::loadClass($className);
+// 	Zend_Loader::loadClass($className);
 }
 
 // Incude JPEG metadata toolkit.
@@ -132,7 +136,7 @@ class PicasaUploader
 			return;
 		}
 
-		file_put_contents(static::REFRESH_TOKEN_FILE, $accessToken);
+		file_put_contents(static::REFRESH_TOKEN_FILE, json_encode($accessToken));
 	}
 
 	/**
@@ -146,7 +150,7 @@ class PicasaUploader
 		$oauthData = $this->getOAuthData();
 		$clientId = $oauthData['client_id'];
 		$clientSecret = $oauthData['client_secret'];
-		$scopes = [Zend_Gdata_Photos::PICASA_BASE_URI];//'https://picasaweb.google.com/data/';
+		$scopes = [Photos::PICASA_BASE_URI];
 		$accessTokenData = static::getAccessTokenData();
 
 		$client = new Google_Client();
@@ -167,25 +171,40 @@ class PicasaUploader
 			$client->authenticate($code);
 
 			$accessToken = $client->getAccessToken();
-			print "\nAccess code: $accessToken\n";
+			print "\nAccess token:\n";
+			var_dump($accessToken);
 			static::storeAccessToken($accessToken);
 		} else {
 			$client->setAccessToken(static::getAccessTokenString());
 			if ($client->isAccessTokenExpired()) {
 				echo 'expired.......' . $this->getRefreshToken();
-				$client->refreshToken($this->getRefreshToken());
-				static::storeAccessToken($client->getAccessToken());
-				var_dump("AT ");
+				$refreshed = $client->refreshToken($this->getRefreshToken());
+				var_dump("REFRESHED: \n");
+				var_dump($refreshed);
+				// static::storeAccessToken($client->getAccessToken());
 			} else {
-				/// echo 'not expired...';
+				 echo 'not expired...';
 			}
 		}
 
-		$accessToken = json_decode($client->getAccessToken(), true);
+		/*
+		$google_oauth = new Google_Service_Plus($client);
+		var_dump($google_oauth->people->get('me'));
+		die();
+		*/
+
+		$accessToken = $client->getAccessToken();
+		var_dump("LATEST ACCESS TOKEN:\n");
+		var_dump($accessToken);
 		$refreshToken = $accessToken['refresh_token'];
 
 		$zc = Zend_Gdata_OAuthClient::getHttpClient($clientId, $clientSecret, $refreshToken);
-		$this->gp = new Zend_Gdata_Photos($zc, 'Google-Dev-1.1');
+
+
+		//$zc = new \ZendGData\HttpClient([]);
+		//$zc->setBearerToken($accessToken['access_token']);
+
+		$this->gp = new Photos($zc, 'Google-Dev-1.1');
 	}
 
 	public function login_old($user, $password)
@@ -411,7 +430,7 @@ class PicasaUploader
 	 */
 	public static function gAlbumExists($gp, $albumId)
 	{
-		$gAlbumQuery = new Zend_Gdata_Photos_AlbumQuery();
+		$gAlbumQuery = new ZendGData\Photos\AlbumQuery();
 		$gAlbumQuery->setUser('default');
 		$gAlbumQuery->setAlbumId($albumId);
 		$gAlbumQuery->setType('entry');
@@ -420,7 +439,7 @@ class PicasaUploader
 			$gAlbumEntry = $gp->getAlbumEntry($gAlbumQuery);
 
 			return $gAlbumEntry;
-		} catch (Zend_Gdata_App_Exception $e) {
+		} catch (ZendGData\App\Exception $e) {
 			echo $e->getMessage();
 			return false;
 		}
@@ -553,7 +572,7 @@ class PicasaUploader
 	public static function addAlbum(
 		$gp, $albumTitle, $albumTime = 0, $albumSummary = '', $public = false
 	) {
-		$entry = new Zend_Gdata_Photos_AlbumEntry();
+		$entry = new ZendGData\Photos\AlbumEntry();
 		if ($public) {
 			$entry->setGphotoAccess($gp->newAccess('public'));
 		}
@@ -594,6 +613,7 @@ class PicasaUploader
 		$fd = $gp->newMediaFileSource($fileNa);
 		$imgMimeType = image_type_to_mime_type(exif_imagetype($fileNa));
 		$fd->setContentType($imgMimeType);
+		$fd->setSlug('thisismytest');
 
 		// Create a PhotoEntry.
 		$photoEntry = $gp->newPhotoEntry();
@@ -602,11 +622,17 @@ class PicasaUploader
 		$photoEntry->setSummary($gp->newSummary($photoCaption));
 		$photoEntry->setGphotoTimestamp($gp->newTimestamp($photoTimestamp));
 
+		$photoEntry->setCategory(array($gp->newCategory(
+            'http://schemas.google.com/photos/2007#photo',
+            'http://schemas.google.com/g/2005#kind')));
+
 		// Add some tags.
-		$keywords = new Zend_Gdata_Media_Extension_MediaKeywords();
+		/*
+		$keywords = new ZendGData\Media\Extension\MediaKeywords();
 		$keywords->setText($photoTags);
-		$photoEntry->mediaGroup = new Zend_Gdata_Media_Extension_MediaGroup();
+		$photoEntry->mediaGroup = new ZendGData\Media\Extension\MediaGroup();
 		$photoEntry->mediaGroup->keywords = $keywords;
+		*/
 
 		// We use the AlbumQuery class to generate the URL for the album.
 		$albumQuery = $gp->newAlbumQuery();
