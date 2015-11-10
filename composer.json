@@ -1,0 +1,19 @@
+{
+	"minimum-stability": "dev",
+    "require": {
+        "zendframework/zendframework": "^2.5",
+        "google/apiclient": "^2.0.0@RC",
+		"zendframework/zendgdata": "dev-oauth2",
+		"zendframework/zendoauth": "^2.0@dev"
+    },
+    "repositories": [
+    	{
+			"type": "vcs",
+			"url": "git@github.com:caberson/ZendGData"
+    	},
+    	{
+    		"type": "vcs",
+    		"url": "git@github.com:caberson/ZendOAuth"
+    	}
+    ]
+}
