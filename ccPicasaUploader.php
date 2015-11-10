@@ -177,13 +177,14 @@ class PicasaUploader
 		} else {
 			$client->setAccessToken(static::getAccessTokenString());
 			if ($client->isAccessTokenExpired()) {
+				$refreshToken = $this->getRefreshToken();
 				echo 'expired.......' . $this->getRefreshToken();
-				$refreshed = $client->refreshToken($this->getRefreshToken());
-				var_dump("REFRESHED: \n");
-				var_dump($refreshed);
-				// static::storeAccessToken($client->getAccessToken());
+				$refreshed = $client->refreshToken($refreshToken);
+				// Store refresh token back as it's not received after the first authentication prompt.
+				$refreshed['refresh_token'] = $refreshToken;
+				static::storeAccessToken($refreshToken);
 			} else {
-				 echo 'not expired...';
+				 echo "Token still valid\n";
 			}
 		}
 
