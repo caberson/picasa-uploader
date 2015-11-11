@@ -1,0 +1,13 @@
+{
+	"minimum-stability": "dev",
+    "require": {
+        "google/apiclient": "^2.0.0@RC",
+		"zendframework/zendframework1": "dev-oauth2"
+    },
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "git@github.com:caberson/zf1.git"
+        }
+    ]
+}

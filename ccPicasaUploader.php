@@ -3,7 +3,7 @@
 #  Author:			Caber Chu - clearcubic.com
 #  FileName:		ccPicasaUploader.php
 #  Description:		Upload photos from your computer to your Picasa account
-#  Version:         0.1
+#  Version:         0.2
 =============================================================================*/
 
 define('CC_UPLOADER_CONFIG_FILE', 'ccPicasaUploaderConfig.json');
@@ -21,27 +21,9 @@ set_include_path(
 	CC_PHP_JPEG_METADATA_TOOLKIT_DIR
 );
 
-require_once 'Zend/Loader.php';
-require_once 'Zend/Gdata.php';
-require_once 'google-api-php-client/src/Google/autoload.php';
 
-// require_once 'zend_gdata_http_client/Zend_Gdata_HttpClient.php';
+require_once __DIR__ .'/vendor/autoload.php';
 require_once 'zend_gdata_http_client/Zend_Gdata_OAuthClient.php';
-
-// Loading other required Zend classes.
-$requiredClasses = array(
-	'Zend_Gdata',
-	'Zend_Gdata_AuthSub',
-	'Zend_Gdata_ClientLogin',
-	'Zend_Gdata_Photos',
-	'Zend_Gdata_Photos_UserQuery',
-	'Zend_Gdata_Photos_AlbumQuery',
-	'Zend_Gdata_Photos_PhotoQuery',
-	'Zend_Gdata_App_Extension_Category',
-);
-foreach ($requiredClasses as $className) {
-	Zend_Loader::loadClass($className);
-}
 
 // Incude JPEG metadata toolkit.
 require_once 'Toolkit_Version.php';
@@ -57,7 +39,6 @@ require_once 'PictureInfo.php';
  */
 class PicasaUploader
 {
-	// const GOOGLE_OAUTH_CREDENTIAL_FILE = 'cc-picasa-uploader-google-client-secret.json';
 	const GOOGLE_OAUTH_CREDENTIAL_FILE = 'cc-picasa-uploader-client-secret.json';
 	const REFRESH_TOKEN_FILE = 'access-token.json';
 
@@ -74,7 +55,7 @@ class PicasaUploader
 	// Google album id.
 	protected $aid;
 
-	protected $moveToFolderWhenDone = '';
+	protected $moveToFolderWhenDone = null;
 
 	public function __construct()
 	{
@@ -132,7 +113,7 @@ class PicasaUploader
 			return;
 		}
 
-		file_put_contents(static::REFRESH_TOKEN_FILE, $accessToken);
+		file_put_contents(static::REFRESH_TOKEN_FILE, json_encode($accessToken));
 	}
 
 	/**
@@ -146,7 +127,7 @@ class PicasaUploader
 		$oauthData = $this->getOAuthData();
 		$clientId = $oauthData['client_id'];
 		$clientSecret = $oauthData['client_secret'];
-		$scopes = [Zend_Gdata_Photos::PICASA_BASE_URI];//'https://picasaweb.google.com/data/';
+		$scopes = [Zend_Gdata_Photos::PICASA_BASE_URI];
 		$accessTokenData = static::getAccessTokenData();
 
 		$client = new Google_Client();
@@ -154,7 +135,6 @@ class PicasaUploader
 		$client->addScope($scopes);
 		$client->setIncludeGrantedScopes(true);
 		$client->setAccessType('offline');
-		// $client->setDeveloperKey($apiKey);
 
 		if (empty($accessTokenData)) {
 			$auth_url = $client->createAuthUrl();
@@ -167,21 +147,23 @@ class PicasaUploader
 			$client->authenticate($code);
 
 			$accessToken = $client->getAccessToken();
-			print "\nAccess code: $accessToken\n";
+			/*
+			print "\nAccess code: \n";
+			var_dump($accessToken);
+			*/
 			static::storeAccessToken($accessToken);
 		} else {
 			$client->setAccessToken(static::getAccessTokenString());
 			if ($client->isAccessTokenExpired()) {
-				echo 'expired.......' . $this->getRefreshToken();
-				$client->refreshToken($this->getRefreshToken());
-				static::storeAccessToken($client->getAccessToken());
-				var_dump("AT ");
-			} else {
-				/// echo 'not expired...';
+				$refreshToken = $this->getRefreshToken();
+				$refreshed = $client->refreshToken($refreshToken);
+				// Store refresh token back as it's not received after the first authentication prompt.
+				$refreshed['refresh_token'] = $refreshToken;
+				static::storeAccessToken($refreshed);
 			}
 		}
 
-		$accessToken = json_decode($client->getAccessToken(), true);
+		$accessToken = $client->getAccessToken();
 		$refreshToken = $accessToken['refresh_token'];
 
 		$zc = Zend_Gdata_OAuthClient::getHttpClient($clientId, $clientSecret, $refreshToken);
@@ -214,13 +196,9 @@ class PicasaUploader
 		$results = $service->volumes->listVolumes('Henry David Thoreau', $optParams);
 
 		foreach ($results as $item) {
-		echo $item['volumeInfo']['title'], "<br /> \n";
+			echo $item['volumeInfo']['title'], "<br /> \n";
 		}
 		return;
-
-
-
-
 
 		$this->gp = new Zend_Gdata_Photos($client, 'Google-Dev-1.1');
 	}
@@ -262,7 +240,7 @@ class PicasaUploader
 		if (is_dir($uploadFolder . '_done')) {
 			$this->moveToFolderWhenDone = $folder . '_done';
 		} else {
-			$this->moveToFolderWhenDone = '';
+			$this->moveToFolderWhenDone = null;
 		}
 
 		// Start uploading photos
