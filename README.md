@@ -6,9 +6,9 @@ Upload photos from your computer to your Picasa account
 Requirements
 ===============
 * PHP5.
-* ZendGdata library (tested with version 1.10).  
+* ZendGdata library (tested with version 1.10).
   Source: http://framework.zend.com/downloads/latest
-* PHP JPEG metadata toolkit (tested with version 1.12).  
+* PHP JPEG metadata toolkit (tested with version 1.12).
   Source: http://www.ozhiker.com/electronics/pjmt/
 * And a picasa account obviously.
 
@@ -23,6 +23,8 @@ Before Use
 * (As of 10/13/2014) The ZendGData download was missing the 'library/Zend/Xml'
   folder.  One can get this missing folder from the Zend Framework 1.12.9
   Minimal install.
+  [5/29/2015] The ZendGData download was missing the 'library/Zend/Http' folder.
+  Got it from ZendFramework 1.12.13 minimal install.
 * (As of 10/13/2014) The PHP JPEG metadata toolkit is a fairly old library.
   I had to make a change to the following two files in the library:
   - Photoshop_IRB.php
